@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select'
 
 export default function WaitlistPage() {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [carouselsPerMonth, setCarouselsPerMonth] = useState('')
   const [error, setError] = useState('')
@@ -75,11 +76,11 @@ export default function WaitlistPage() {
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 grid min-h-[calc(100vh-160px)] gap-16 px-8 py-16 lg:grid-cols-2 lg:px-16 lg:py-24">
+      <main className="relative z-10 grid gap-12 px-8 pt-4 pb-16 lg:grid-cols-2 lg:px-16 lg:pt-8 lg:pb-24">
         {/* Left Column - Text */}
-        <div className="flex flex-col justify-center">
+        <div className="flex flex-col">
           {/* Coming Soon Badge */}
-          <div className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-cyan/30 bg-cyan/5 px-4 py-2">
+          <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-cyan/30 bg-cyan/5 px-4 py-2">
             <div className="h-2 w-2 rounded-full bg-cyan animate-pulse" />
             <span className="text-xs font-semibold uppercase tracking-wider text-cyan">
               Coming Soon
@@ -92,12 +93,12 @@ export default function WaitlistPage() {
           </h1>
 
           {/* Description */}
-          <p className="mt-6 max-w-md text-lg text-muted-foreground leading-relaxed">
+          <p className="mt-4 max-w-md text-lg text-muted-foreground leading-relaxed">
             Swyze AI es el catalizador sofisticado para creadores. Unete a la lista de espera para obtener acceso anticipado y transformar tu estrategia de contenido.
           </p>
 
           {/* Waitlist Form */}
-          <div className="mt-10 w-full max-w-md rounded-2xl border border-border bg-surface-1 p-6">
+          <div className="mt-6 w-full max-w-md rounded-2xl border border-border bg-surface-1 p-6">
             {isSubmitted ? (
               <div className="text-center py-4">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-cyan/10 flex items-center justify-center">
@@ -110,6 +111,19 @@ export default function WaitlistPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-sm text-muted-foreground">
+                    Nombre
+                  </Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Tu nombre"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-12 border-border bg-surface-2 text-foreground placeholder:text-muted-foreground focus-visible:ring-cyan"
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm text-muted-foreground">
                     Correo electronico
