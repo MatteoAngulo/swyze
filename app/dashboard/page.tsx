@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { AlertCircle, Plus, Sparkles, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { 
   Select,
   SelectContent,
@@ -46,6 +46,7 @@ const recentCarousels = [
 ]
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [prompt, setPrompt] = useState('')
   const [selectedBrandKit, setSelectedBrandKit] = useState('default')
   const [slides, setSlides] = useState('5')
@@ -55,11 +56,15 @@ export default function DashboardPage() {
   const handleGenerate = () => {
     if (!prompt.trim()) return
     setIsGenerating(true)
-    // Simulate generation - in real app this would call an API
-    setTimeout(() => {
-      setIsGenerating(false)
-      // Would redirect to editor with new carousel
-    }, 2000)
+    // Store the prompt in sessionStorage for the editor to use
+    sessionStorage.setItem('carouselPrompt', JSON.stringify({
+      prompt,
+      brandKit: selectedBrandKit,
+      slides,
+      platform
+    }))
+    // Redirect to editor with new carousel
+    router.push('/dashboard/editor/new')
   }
 
   const tokenPercentage = (userData.tokensAvailable / userData.tokensTotal) * 100
@@ -83,29 +88,32 @@ export default function DashboardPage() {
       </Alert>
 
       {/* Welcome */}
-      <div className="mb-8">
-        <h1 className="font-heading text-xl font-semibold text-foreground">
-          Hola, {userData.name}
+      <div className="mb-6">
+        <h1 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
+          Hola, {userData.name} <span className="text-xl">&#128075;</span>
         </h1>
-        <p className="mt-1 text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           ¿Qué carrusel creamos hoy?
         </p>
       </div>
 
       {/* Generator Card */}
-      <div className="rounded-2xl border border-border bg-surface-1 p-6">
-        <Input
+      <div className="rounded-2xl border border-border bg-surface-1 p-5">
+        {/* Textarea for prompt */}
+        <textarea
           placeholder="Ej: 5 tips para mejorar la retención en tus videos de Instagram..."
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          className="h-14 border-none bg-surface-2 text-foreground placeholder:text-muted-foreground focus-visible:ring-cyan"
+          rows={3}
+          className="w-full resize-none border-none bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 text-sm"
         />
         
-        <div className="mt-4 flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Brand Kit</span>
+        {/* Options Row */}
+        <div className="mt-4 flex flex-wrap items-end gap-6">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Brand Kit</span>
             <Select value={selectedBrandKit} onValueChange={setSelectedBrandKit}>
-              <SelectTrigger className="w-[140px] border-border bg-surface-2 text-foreground">
+              <SelectTrigger className="w-[160px] h-10 border-border bg-surface-2 text-foreground text-sm">
                 <SelectValue placeholder="Theme" />
               </SelectTrigger>
               <SelectContent>
@@ -116,10 +124,10 @@ export default function DashboardPage() {
             </Select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Slides</span>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Slides</span>
             <Select value={slides} onValueChange={setSlides}>
-              <SelectTrigger className="w-[100px] border-border bg-surface-2 text-foreground">
+              <SelectTrigger className="w-[120px] h-10 border-border bg-surface-2 text-foreground text-sm">
                 <SelectValue placeholder="Slides" />
               </SelectTrigger>
               <SelectContent>
@@ -131,10 +139,10 @@ export default function DashboardPage() {
             </Select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Platform</span>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Platform</span>
             <Select value={platform} onValueChange={setPlatform}>
-              <SelectTrigger className="w-[140px] border-border bg-surface-2 text-foreground">
+              <SelectTrigger className="w-[150px] h-10 border-border bg-surface-2 text-foreground text-sm">
                 <SelectValue placeholder="Platform" />
               </SelectTrigger>
               <SelectContent>
@@ -148,17 +156,17 @@ export default function DashboardPage() {
           <div className="ml-auto flex items-center gap-4">
             <Link 
               href="/dashboard/billing" 
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Zap className="h-4 w-4 text-cyan" />
+              <Zap className="h-3.5 w-3.5 text-cyan" />
               <span>
-                <span className="font-semibold text-foreground">{userData.tokensAvailable}</span> tokens disponibles
+                Tienes <span className="font-semibold text-foreground">{userData.tokensAvailable}</span> tokens disponibles este mes
               </span>
             </Link>
             <Button 
               onClick={handleGenerate}
               disabled={isGenerating || !prompt.trim()}
-              className="bg-cyan text-primary-foreground font-semibold hover:bg-cyan/90 glow-cyan-hover disabled:opacity-50"
+              className="h-10 px-5 bg-cyan text-primary-foreground font-semibold hover:bg-cyan/90 glow-cyan-hover disabled:opacity-50"
             >
               {isGenerating ? (
                 <>

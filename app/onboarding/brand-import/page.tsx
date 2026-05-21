@@ -31,11 +31,11 @@ export default function OnboardingBrandImportPage() {
 
         {/* Main Content */}
         <div className="w-full max-w-lg text-center">
-          <h1 className="font-heading text-3xl font-bold text-foreground md:text-4xl">
-            Configura la marca de tu primer cliente
+          <h1 className="font-heading text-3xl font-bold text-foreground md:text-4xl italic">
+            Configura la marca<br />de tu primer cliente
           </h1>
           <p className="mt-4 text-muted-foreground">
-            Ingresa la URL de su sitio y extraemos los colores y logo automáticamente.
+            Ingresa la URL de su sitio y extraemos los colores y<br />logo automáticamente.
           </p>
 
           {/* Import Form */}
