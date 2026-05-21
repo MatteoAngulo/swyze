@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { AlertCircle, Plus, Sparkles } from 'lucide-react'
+import { AlertCircle, Plus, Sparkles, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { 
@@ -14,22 +15,55 @@ import {
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
+// Mock data - in a real app this would come from an API/database
+const userData = {
+  name: 'Valentina',
+  tokensAvailable: 12,
+  tokensTotal: 50,
+}
+
+const brandKits = [
+  { id: 'default', name: 'Default Theme' },
+  { id: 'neon', name: 'Neon Tech' },
+  { id: 'minimal', name: 'Minimal' },
+]
+
 const recentCarousels = [
   {
     id: 1,
     title: 'Growth Hacks 2024',
     image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=500&fit=crop',
     badge: 'AI-Generated',
+    createdAt: '2024-10-20',
   },
   {
     id: 2,
     title: 'UI Design Principles',
     image: 'https://images.unsplash.com/photo-1558655146-9f40138edfeb?w=400&h=500&fit=crop',
     badge: 'Pro',
+    createdAt: '2024-10-18',
   },
 ]
 
 export default function DashboardPage() {
+  const [prompt, setPrompt] = useState('')
+  const [selectedBrandKit, setSelectedBrandKit] = useState('default')
+  const [slides, setSlides] = useState('5')
+  const [platform, setPlatform] = useState('instagram')
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  const handleGenerate = () => {
+    if (!prompt.trim()) return
+    setIsGenerating(true)
+    // Simulate generation - in real app this would call an API
+    setTimeout(() => {
+      setIsGenerating(false)
+      // Would redirect to editor with new carousel
+    }, 2000)
+  }
+
+  const tokenPercentage = (userData.tokensAvailable / userData.tokensTotal) * 100
+
   return (
     <div className="max-w-4xl">
       {/* Brand Kit Alert */}
@@ -51,7 +85,7 @@ export default function DashboardPage() {
       {/* Welcome */}
       <div className="mb-8">
         <h1 className="font-heading text-xl font-semibold text-foreground">
-          Hola, Valentina
+          Hola, {userData.name}
         </h1>
         <p className="mt-1 text-muted-foreground">
           ¿Qué carrusel creamos hoy?
@@ -62,27 +96,29 @@ export default function DashboardPage() {
       <div className="rounded-2xl border border-border bg-surface-1 p-6">
         <Input
           placeholder="Ej: 5 tips para mejorar la retención en tus videos de Instagram..."
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
           className="h-14 border-none bg-surface-2 text-foreground placeholder:text-muted-foreground focus-visible:ring-cyan"
         />
         
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Brand Kit</span>
-            <Select defaultValue="default">
+            <Select value={selectedBrandKit} onValueChange={setSelectedBrandKit}>
               <SelectTrigger className="w-[140px] border-border bg-surface-2 text-foreground">
                 <SelectValue placeholder="Theme" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="default">Default Theme</SelectItem>
-                <SelectItem value="neon">Neon Tech</SelectItem>
-                <SelectItem value="minimal">Minimal</SelectItem>
+                {brandKits.map((kit) => (
+                  <SelectItem key={kit.id} value={kit.id}>{kit.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Slides</span>
-            <Select defaultValue="5">
+            <Select value={slides} onValueChange={setSlides}>
               <SelectTrigger className="w-[100px] border-border bg-surface-2 text-foreground">
                 <SelectValue placeholder="Slides" />
               </SelectTrigger>
@@ -97,7 +133,7 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Platform</span>
-            <Select defaultValue="instagram">
+            <Select value={platform} onValueChange={setPlatform}>
               <SelectTrigger className="w-[140px] border-border bg-surface-2 text-foreground">
                 <SelectValue placeholder="Platform" />
               </SelectTrigger>
@@ -110,11 +146,28 @@ export default function DashboardPage() {
           </div>
 
           <div className="ml-auto flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Tienes <span className="font-semibold text-foreground">12</span> tokens disponibles este mes
-            </span>
-            <Button className="bg-cyan text-primary-foreground font-semibold hover:bg-cyan/90 glow-cyan-hover">
-              Generar carrusel
+            <Link 
+              href="/dashboard/billing" 
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Zap className="h-4 w-4 text-cyan" />
+              <span>
+                <span className="font-semibold text-foreground">{userData.tokensAvailable}</span> tokens disponibles
+              </span>
+            </Link>
+            <Button 
+              onClick={handleGenerate}
+              disabled={isGenerating || !prompt.trim()}
+              className="bg-cyan text-primary-foreground font-semibold hover:bg-cyan/90 glow-cyan-hover disabled:opacity-50"
+            >
+              {isGenerating ? (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4 animate-pulse" />
+                  Generando...
+                </>
+              ) : (
+                'Generar carrusel'
+              )}
             </Button>
           </div>
         </div>

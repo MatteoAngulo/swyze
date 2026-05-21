@@ -48,7 +48,7 @@ export default function CarouselEditorPage() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border bg-surface-0 px-6 py-4">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
+          <Link href="/dashboard/projects" className="text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <h1 className="font-heading text-lg font-semibold text-foreground">
@@ -57,10 +57,10 @@ export default function CarouselEditorPage() {
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/dashboard/billing" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <Zap className="h-4 w-4 text-cyan" />
             <span>1,250 Tokens</span>
-          </div>
+          </Link>
           <Button className="bg-cyan text-primary-foreground font-semibold hover:bg-cyan/90 glow-cyan-hover">
             <Download className="mr-2 h-4 w-4" />
             Export as ZIP

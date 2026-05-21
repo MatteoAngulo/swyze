@@ -54,14 +54,14 @@ export default function SignUpPage() {
     setIsLoading(true)
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500))
-    router.push('/dashboard')
+    router.push('/onboarding/brand-import')
   }
 
   const handleGoogleSignUp = async () => {
     setIsLoading(true)
     // Simulate Google auth
     await new Promise(resolve => setTimeout(resolve, 500))
-    router.push('/dashboard')
+    router.push('/onboarding/brand-import')
   }
 
   return (

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { 
   FolderOpen, 
   LayoutGrid, 
@@ -11,10 +11,19 @@ import {
   HelpCircle,
   Plus,
   Sparkles,
-  CreditCard
+  CreditCard,
+  LogOut,
+  User
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface SwyzeSidebarProps {
   user?: {
@@ -33,12 +42,19 @@ const mainNavItems = [
 ]
 
 const bottomNavItems = [
+  { href: '/dashboard/billing', label: 'Billing & Tokens', icon: CreditCard },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
   { href: '/dashboard/help', label: 'Help', icon: HelpCircle },
 ]
 
 export function SwyzeSidebar({ user }: SwyzeSidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = () => {
+    // In a real app, this would call an auth logout function
+    router.push('/auth/login')
+  }
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-[280px] flex-col border-r border-border bg-surface-0">
@@ -115,23 +131,45 @@ export function SwyzeSidebar({ user }: SwyzeSidebarProps) {
           )
         })}
 
-        {/* User Profile */}
+        {/* User Profile with Dropdown */}
         {user && (
-          <Link
-            href="/dashboard/settings/account"
-            className="mt-2 flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-1/50 hover:text-foreground"
-          >
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback className="bg-cyan text-primary-foreground text-xs">
-                {user.name?.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 overflow-hidden">
-              <p className="truncate font-medium text-foreground">{user.name}</p>
-              <p className="truncate text-xs text-muted-foreground">{user.plan || 'Creator Pro'}</p>
-            </div>
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="mt-2 flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-1/50 hover:text-foreground"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback className="bg-cyan text-primary-foreground text-xs">
+                    {user.name?.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 overflow-hidden text-left">
+                  <p className="truncate font-medium text-foreground">{user.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{user.plan || 'Creator Pro'}</p>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/settings" className="flex items-center gap-2 cursor-pointer">
+                  <User className="h-4 w-4" />
+                  <span>Account</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/billing" className="flex items-center gap-2 cursor-pointer">
+                  <CreditCard className="h-4 w-4" />
+                  <span>Billing & Tokens</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 cursor-pointer text-red-400 focus:text-red-400">
+                <LogOut className="h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     </aside>
