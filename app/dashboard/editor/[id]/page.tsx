@@ -30,11 +30,31 @@ import {
   CheckCircle,
   TrendingUp,
   Users,
-  Loader2
+  Loader2,
+  PanelLeftClose,
+  PanelLeft,
+  FileImage,
+  FileCode,
+  Archive,
+  X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface SlideData {
   id: number
@@ -57,10 +77,10 @@ const iconMap: Record<string, React.ElementType> = {
 }
 
 const fontOptions = [
-  { value: 'inter', label: 'Inter', style: 'Clean & Modern' },
-  { value: 'sora', label: 'Sora', style: 'Tech & Bold' },
-  { value: 'playfair', label: 'Playfair', style: 'Elegant' },
-  { value: 'jakarta', label: 'Jakarta', style: 'Geometric' },
+  { value: 'inter', label: 'Inter', style: 'Clean & Modern', fontFamily: "'Inter', sans-serif" },
+  { value: 'sora', label: 'Sora', style: 'Tech & Bold', fontFamily: "'Sora', sans-serif" },
+  { value: 'playfair', label: 'Playfair', style: 'Elegant', fontFamily: "'Playfair Display', serif" },
+  { value: 'jakarta', label: 'Jakarta', style: 'Geometric', fontFamily: "'Plus Jakarta Sans', sans-serif" },
 ]
 
 const colorPalettes = [
@@ -69,6 +89,8 @@ const colorPalettes = [
     name: 'Neon Tech', 
     colors: ['#0D0D0D', '#00D4FF', '#FF4081', '#1A1A1A'],
     primary: '#00D4FF',
+    secondary: '#0D0D0D',
+    accent: '#FF4081',
     background: 'from-purple-900/80 via-purple-800/60 to-pink-900/40',
     textColor: 'white'
   },
@@ -77,6 +99,8 @@ const colorPalettes = [
     name: 'Minimal Coral', 
     colors: ['#F5F5F5', '#2A2A2A', '#E0E0E0', '#FF6B6B'],
     primary: '#FF6B6B',
+    secondary: '#2A2A2A',
+    accent: '#E0E0E0',
     background: 'from-gray-100 via-gray-50 to-white',
     textColor: 'black'
   },
@@ -104,9 +128,17 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
   const [aiInput, setAiInput] = useState('')
   const [history, setHistory] = useState<SlideData[][]>([defaultSlides])
   const [historyIndex, setHistoryIndex] = useState(0)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [showColorEditor, setShowColorEditor] = useState(false)
+  const [customColors, setCustomColors] = useState({
+    primary: '#00D4FF',
+    secondary: '#131313',
+    accent: '#FEB528',
+  })
   
   const slideRefs = useRef<(HTMLDivElement | null)[]>([])
   const currentPalette = colorPalettes.find(p => p.id === selectedPalette) || colorPalettes[0]
+  const currentFont = fontOptions.find(f => f.value === selectedFont) || fontOptions[1]
 
   // Resolve params
   useEffect(() => {
@@ -242,7 +274,8 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
     setAiInput('')
   }
 
-  const exportSlides = async () => {
+  // Export as ZIP (all slides)
+  const exportAsZip = async () => {
     setIsExporting(true)
     const zip = new JSZip()
     
@@ -253,7 +286,7 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
           const dataUrl = await toPng(slideRef, {
             quality: 1,
             pixelRatio: 2,
-            backgroundColor: '#0D0D0D'
+            backgroundColor: useBrandKit ? customColors.primary : currentPalette.primary
           })
           const base64 = dataUrl.split(',')[1]
           zip.file(`slide-${i + 1}.png`, base64, { base64: true })
@@ -269,7 +302,138 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
     }
   }
 
+  // Export single slide as PNG
+  const exportSinglePng = async (slideIndex: number) => {
+    setIsExporting(true)
+    try {
+      const slideRef = slideRefs.current[slideIndex]
+      if (slideRef) {
+        const dataUrl = await toPng(slideRef, {
+          quality: 1,
+          pixelRatio: 2,
+          backgroundColor: useBrandKit ? customColors.primary : currentPalette.primary
+        })
+        saveAs(dataUrl, `slide-${slideIndex + 1}.png`)
+      }
+    } catch (error) {
+      console.error('[v0] Export PNG error:', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Export single slide as HTML
+  const exportSingleHtml = (slideIndex: number) => {
+    const slide = slides[slideIndex]
+    const IconComponent = iconMap[slide.icon || 'chart'] || BarChart3
+    const bgColor = useBrandKit ? customColors.primary : currentPalette.primary
+    const textColor = useBrandKit ? customColors.secondary : (currentPalette.textColor === 'white' ? '#ffffff' : '#1a1a1a')
+    const accentColor = useBrandKit ? customColors.accent : currentPalette.accent
+    
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slide ${slideIndex + 1} - ${slide.headline}</title>
+  <link href="https://fonts.googleapis.com/css2?family=${currentFont.label.replace(' ', '+')}:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: '${currentFont.label}', sans-serif; 
+      background: #0d0d0d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .slide {
+      width: ${format === '1:1' ? '400px' : '400px'};
+      height: ${format === '1:1' ? '400px' : '500px'};
+      background: ${bgColor};
+      border-radius: 16px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+    }
+    .icon-container {
+      width: 56px;
+      height: 56px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: auto;
+    }
+    .icon { width: 28px; height: 28px; color: ${textColor}; }
+    .headline {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: ${textColor};
+    }
+    .body {
+      margin-top: 16px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: ${textColor};
+      opacity: 0.7;
+    }
+    .footer {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 24px;
+    }
+    .handle { font-size: 12px; color: ${textColor}; opacity: 0.5; }
+    .dots { display: flex; gap: 4px; }
+    .dot { 
+      width: 8px; 
+      height: 8px; 
+      border-radius: 50%; 
+      background: ${textColor}; 
+      opacity: 0.3; 
+    }
+    .dot.active { background: ${accentColor}; opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="slide">
+    <div class="icon-container">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+    </div>
+    <h1 class="headline">${slide.headline}</h1>
+    <p class="body">${slide.body}</p>
+    <div class="footer">
+      <span class="handle">@swyze_ai</span>
+      <div class="dots">
+        ${slides.map((_, i) => `<div class="dot ${i === slideIndex ? 'active' : ''}"></div>`).join('')}
+      </div>
+    </div>
+  </div>
+</body>
+</html>`
+    
+    const blob = new Blob([html], { type: 'text/html' })
+    saveAs(blob, `slide-${slideIndex + 1}.html`)
+  }
+
   const IconComponent = iconMap[slides[currentSlide - 1]?.icon || 'chart'] || BarChart3
+
+  // Apply custom colors when brand kit is enabled
+  const getBackgroundColor = () => {
+    if (useBrandKit) return customColors.primary
+    return currentPalette.primary
+  }
+
+  const getTextColor = () => {
+    if (useBrandKit) return customColors.secondary
+    return currentPalette.textColor === 'white' ? '#ffffff' : '#1a1a1a'
+  }
 
   if (!resolvedParams) {
     return (
@@ -297,123 +461,174 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
             <Zap className="h-4 w-4 text-cyan" />
             <span>1,250 Tokens</span>
           </Link>
-          <Button 
-            onClick={exportSlides}
-            disabled={isExporting}
-            className="bg-cyan text-primary-foreground font-semibold hover:bg-cyan/90 glow-cyan-hover"
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" />
-                Export as ZIP
-              </>
-            )}
-          </Button>
+          
+          {/* Export Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                disabled={isExporting}
+                className="bg-cyan text-primary-foreground font-semibold hover:bg-cyan/90 glow-cyan-hover"
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                  </>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={exportAsZip} className="cursor-pointer">
+                <Archive className="mr-2 h-4 w-4" />
+                <div>
+                  <p>Export All as ZIP</p>
+                  <p className="text-xs text-muted-foreground">All {slides.length} slides as PNG</p>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => exportSinglePng(currentSlide - 1)} className="cursor-pointer">
+                <FileImage className="mr-2 h-4 w-4" />
+                <div>
+                  <p>Current Slide as PNG</p>
+                  <p className="text-xs text-muted-foreground">Slide {currentSlide} only</p>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportSingleHtml(currentSlide - 1)} className="cursor-pointer">
+                <FileCode className="mr-2 h-4 w-4" />
+                <div>
+                  <p>Current Slide as HTML</p>
+                  <p className="text-xs text-muted-foreground">Editable HTML file</p>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel - AI Chat */}
-        <aside className="w-[320px] border-r border-border bg-surface-0 flex flex-col">
-          {/* Generation Status */}
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center justify-between mb-2">
-              <span className={cn(
-                "text-xs font-semibold uppercase tracking-wider",
-                isGenerating ? "text-cyan" : "text-muted-foreground"
-              )}>
-                {isGenerating ? 'Generando' : 'Listo'}
-              </span>
-              <span className="text-sm text-muted-foreground">Slide {currentSlide} de {slides.length}</span>
-            </div>
-            <div className="h-1 w-full rounded-full bg-surface-2 overflow-hidden">
-              <div 
-                className="h-full rounded-full bg-cyan transition-all"
-                style={{ width: `${(currentSlide / slides.length) * 100}%` }}
-              />
-            </div>
-          </div>
+        {/* Left Panel - AI Chat (Collapsible) */}
+        {!isSidebarCollapsed ? (
+          <aside className="w-[320px] border-r border-border bg-surface-0 flex flex-col relative">
+            {/* Collapse Button */}
+            <button
+              onClick={() => setIsSidebarCollapsed(true)}
+              className="absolute -right-3 top-4 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface-1 text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-all"
+              title="Ocultar panel"
+            >
+              <PanelLeftClose className="h-3.5 w-3.5" />
+            </button>
 
-          {/* AI Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length === 0 ? (
-              <div className="rounded-xl bg-surface-1 p-4">
-                <p className="text-sm text-foreground leading-relaxed">
-                  Carousel structure ready. I&apos;m applying the &apos;{currentPalette.name}&apos; brand palette now.
-                </p>
+            {/* Generation Status */}
+            <div className="p-4 border-b border-border">
+              <div className="flex items-center justify-between mb-2">
+                <span className={cn(
+                  "text-xs font-semibold uppercase tracking-wider",
+                  isGenerating ? "text-cyan" : "text-muted-foreground"
+                )}>
+                  {isGenerating ? 'Generando' : 'Listo'}
+                </span>
+                <span className="text-sm text-muted-foreground">Slide {currentSlide} de {slides.length}</span>
               </div>
-            ) : (
-              messages.map((msg) => (
+              <div className="h-1 w-full rounded-full bg-surface-2 overflow-hidden">
                 <div 
-                  key={msg.id}
-                  className={cn(
-                    "rounded-xl p-4",
-                    msg.role === 'user' 
-                      ? "bg-cyan/10 border border-cyan/20" 
-                      : "bg-surface-1"
-                  )}
-                >
+                  className="h-full rounded-full bg-cyan transition-all"
+                  style={{ width: `${(currentSlide / slides.length) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* AI Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.length === 0 ? (
+                <div className="rounded-xl bg-surface-1 p-4">
                   <p className="text-sm text-foreground leading-relaxed">
-                    {msg.parts
-                      ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-                      .map(p => p.text)
-                      .join('')
-                      .slice(0, 200) || '...'}
-                    {(msg.parts?.filter((p): p is { type: 'text'; text: string } => p.type === 'text').map(p => p.text).join('') || '').length > 200 && '...'}
+                    Carousel structure ready. I&apos;m applying the &apos;{currentPalette.name}&apos; brand palette now.
                   </p>
                 </div>
-              ))
-            )}
-            
-            {isGenerating && (
-              <div className="flex items-center gap-2 text-cyan">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Generating content...</span>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Actions & Input */}
-          <div className="p-4 border-t border-border space-y-3">
-            <div className="flex flex-wrap gap-2">
-              <button 
-                onClick={() => setAiInput('Cambiar los colores a tonos más vibrantes')}
-                className="px-3 py-1.5 text-xs rounded-full border border-border bg-surface-1 text-muted-foreground hover:bg-surface-2 hover:text-foreground transition-colors"
-              >
-                Cambiar colores
-              </button>
-              <button 
-                onClick={() => setAiInput(`Reescribe el slide ${currentSlide} con un tono más profesional`)}
-                className="px-3 py-1.5 text-xs rounded-full border border-border bg-surface-1 text-muted-foreground hover:bg-surface-2 hover:text-foreground transition-colors"
-              >
-                Reescribir slide
-              </button>
+              ) : (
+                messages.map((msg) => (
+                  <div 
+                    key={msg.id}
+                    className={cn(
+                      "rounded-xl p-4",
+                      msg.role === 'user' 
+                        ? "bg-cyan/10 border border-cyan/20" 
+                        : "bg-surface-1"
+                    )}
+                  >
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {msg.parts
+                        ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+                        .map(p => p.text)
+                        .join('')
+                        .slice(0, 200) || '...'}
+                      {(msg.parts?.filter((p): p is { type: 'text'; text: string } => p.type === 'text').map(p => p.text).join('') || '').length > 200 && '...'}
+                    </p>
+                  </div>
+                ))
+              )}
+              
+              {isGenerating && (
+                <div className="flex items-center gap-2 text-cyan">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Generating content...</span>
+                </div>
+              )}
             </div>
-            
-            <form onSubmit={handleAiSubmit} className="relative">
-              <textarea
-                value={aiInput}
-                onChange={(e) => setAiInput(e.target.value)}
-                placeholder="Escribe instrucciones para la IA..."
-                rows={2}
-                className="w-full resize-none rounded-xl border border-border bg-surface-1 px-4 py-3 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan/50"
-              />
-              <Button 
-                type="submit"
-                size="icon" 
-                disabled={isGenerating || !aiInput.trim()}
-                className="absolute right-2 bottom-2 h-8 w-8 bg-transparent hover:bg-surface-2 disabled:opacity-50"
-              >
-                <Send className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </form>
+
+            {/* Quick Actions & Input */}
+            <div className="p-4 border-t border-border space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={() => setAiInput('Cambiar los colores a tonos más vibrantes')}
+                  className="px-3 py-1.5 text-xs rounded-full border border-border bg-surface-1 text-muted-foreground hover:bg-surface-2 hover:text-foreground transition-colors"
+                >
+                  Cambiar colores
+                </button>
+                <button 
+                  onClick={() => setAiInput(`Reescribe el slide ${currentSlide} con un tono más profesional`)}
+                  className="px-3 py-1.5 text-xs rounded-full border border-border bg-surface-1 text-muted-foreground hover:bg-surface-2 hover:text-foreground transition-colors"
+                >
+                  Reescribir slide
+                </button>
+              </div>
+              
+              <form onSubmit={handleAiSubmit} className="relative">
+                <textarea
+                  value={aiInput}
+                  onChange={(e) => setAiInput(e.target.value)}
+                  placeholder="Escribe instrucciones para la IA..."
+                  rows={2}
+                  className="w-full resize-none rounded-xl border border-border bg-surface-1 px-4 py-3 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan/50"
+                />
+                <Button 
+                  type="submit"
+                  size="icon" 
+                  disabled={isGenerating || !aiInput.trim()}
+                  className="absolute right-2 bottom-2 h-8 w-8 bg-transparent hover:bg-surface-2 disabled:opacity-50"
+                >
+                  <Send className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </form>
+            </div>
+          </aside>
+        ) : (
+          /* Collapsed Sidebar - Just an icon to expand */
+          <div className="w-12 border-r border-border bg-surface-0 flex flex-col items-center pt-4">
+            <button
+              onClick={() => setIsSidebarCollapsed(false)}
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-1 text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-all"
+              title="Mostrar panel"
+            >
+              <PanelLeft className="h-5 w-5" />
+            </button>
           </div>
-        </aside>
+        )}
 
         {/* Main Canvas */}
         <main className="flex-1 flex flex-col bg-surface-0/50">
@@ -443,7 +658,7 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-cyan" />
               <span className="text-sm text-muted-foreground">Brand Kit Activo:</span>
-              <span className="text-sm font-medium text-foreground">{currentPalette.name}</span>
+              <span className="text-sm font-medium text-foreground">{useBrandKit ? 'Custom' : currentPalette.name}</span>
             </div>
 
             <span className="text-sm text-muted-foreground">Slide {currentSlide} de {slides.length}</span>
@@ -472,14 +687,17 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
               <div 
                 ref={(el) => { slideRefs.current[currentSlide - 1] = el }}
                 className={cn(
-                  "rounded-2xl p-8 flex flex-col bg-gradient-to-br",
-                  currentPalette.background,
+                  "rounded-2xl p-8 flex flex-col",
                   format === '1:1' ? 'w-[400px] h-[400px]' : 'w-[400px] h-[500px]'
                 )}
+                style={{ 
+                  backgroundColor: getBackgroundColor(),
+                  fontFamily: currentFont.fontFamily
+                }}
               >
                 {/* Icon */}
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-cyan/20 mb-auto">
-                  <IconComponent className="h-7 w-7 text-cyan" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-black/20 mb-auto">
+                  <IconComponent className="h-7 w-7" style={{ color: getTextColor() }} />
                 </div>
 
                 {/* Content - Editable */}
@@ -491,19 +709,21 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
                       onChange={(e) => handleTextEdit(slides[currentSlide - 1].id, 'headline', e.target.value)}
                       onBlur={() => setEditingField(null)}
                       onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && setEditingField(null)}
-                      className={cn(
-                        "font-heading text-2xl font-bold leading-tight bg-transparent border-none outline-none resize-none w-full",
-                        currentPalette.textColor === 'white' ? 'text-white' : 'text-gray-900'
-                      )}
+                      className="text-2xl font-bold leading-tight bg-transparent border-none outline-none resize-none w-full"
+                      style={{ 
+                        color: getTextColor(),
+                        fontFamily: currentFont.fontFamily
+                      }}
                       rows={2}
                     />
                   ) : (
                     <h2 
                       onClick={() => setEditingField({ slideId: slides[currentSlide - 1].id, field: 'headline' })}
-                      className={cn(
-                        "font-heading text-2xl font-bold leading-tight cursor-text hover:bg-white/10 rounded px-1 -mx-1 transition-colors",
-                        currentPalette.textColor === 'white' ? 'text-white' : 'text-gray-900'
-                      )}
+                      className="text-2xl font-bold leading-tight cursor-text hover:bg-white/10 rounded px-1 -mx-1 transition-colors"
+                      style={{ 
+                        color: getTextColor(),
+                        fontFamily: currentFont.fontFamily
+                      }}
                     >
                       {slides[currentSlide - 1]?.headline}
                     </h2>
@@ -515,19 +735,21 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
                       value={slides[currentSlide - 1]?.body || ''}
                       onChange={(e) => handleTextEdit(slides[currentSlide - 1].id, 'body', e.target.value)}
                       onBlur={() => setEditingField(null)}
-                      className={cn(
-                        "mt-4 text-sm leading-relaxed bg-transparent border-none outline-none resize-none w-full",
-                        currentPalette.textColor === 'white' ? 'text-white/70' : 'text-gray-600'
-                      )}
+                      className="mt-4 text-sm leading-relaxed bg-transparent border-none outline-none resize-none w-full opacity-70"
+                      style={{ 
+                        color: getTextColor(),
+                        fontFamily: currentFont.fontFamily
+                      }}
                       rows={4}
                     />
                   ) : (
                     <p 
                       onClick={() => setEditingField({ slideId: slides[currentSlide - 1].id, field: 'body' })}
-                      className={cn(
-                        "mt-4 text-sm leading-relaxed cursor-text hover:bg-white/10 rounded px-1 -mx-1 transition-colors",
-                        currentPalette.textColor === 'white' ? 'text-white/70' : 'text-gray-600'
-                      )}
+                      className="mt-4 text-sm leading-relaxed cursor-text hover:bg-white/10 rounded px-1 -mx-1 transition-colors opacity-70"
+                      style={{ 
+                        color: getTextColor(),
+                        fontFamily: currentFont.fontFamily
+                      }}
                     >
                       {slides[currentSlide - 1]?.body}
                     </p>
@@ -536,10 +758,10 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
 
                 {/* Footer */}
                 <div className="mt-auto flex items-center justify-between">
-                  <span className={cn(
-                    "text-xs",
-                    currentPalette.textColor === 'white' ? 'text-white/50' : 'text-gray-400'
-                  )}>
+                  <span 
+                    className="text-xs opacity-50"
+                    style={{ color: getTextColor() }}
+                  >
                     @swyze_ai
                   </span>
                   <div className="flex gap-1">
@@ -548,8 +770,11 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
                         key={i}
                         className={cn(
                           'h-2 w-2 rounded-full',
-                          i + 1 === currentSlide ? 'bg-cyan' : currentPalette.textColor === 'white' ? 'bg-white/30' : 'bg-gray-300'
+                          i + 1 === currentSlide ? 'bg-cyan' : 'opacity-30'
                         )}
+                        style={{ 
+                          backgroundColor: i + 1 === currentSlide ? undefined : getTextColor()
+                        }}
                       />
                     ))}
                   </div>
@@ -578,15 +803,13 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
                 >
                   <div 
                     ref={(el) => { if (i !== currentSlide - 1) slideRefs.current[i] = el }}
-                    className={cn(
-                      "h-full w-full flex items-end justify-center pb-1 bg-gradient-to-br",
-                      currentPalette.background
-                    )}
+                    className="h-full w-full flex items-end justify-center pb-1"
+                    style={{ backgroundColor: getBackgroundColor() }}
                   >
-                    <span className={cn(
-                      "text-[10px]",
-                      currentPalette.textColor === 'white' ? 'text-white/50' : 'text-gray-400'
-                    )}>
+                    <span 
+                      className="text-[10px] opacity-50"
+                      style={{ color: getTextColor() }}
+                    >
                       {i + 1}
                     </span>
                   </div>
@@ -648,10 +871,10 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
                       : 'border-border bg-surface-1 hover:border-foreground/30'
                   )}
                 >
-                  <p className={cn(
-                    'font-semibold text-foreground',
-                    font.value === 'sora' && 'font-heading'
-                  )}>
+                  <p 
+                    className="font-semibold text-foreground"
+                    style={{ fontFamily: font.fontFamily }}
+                  >
                     {font.label}
                   </p>
                   <p className="text-xs text-muted-foreground">{font.style}</p>
@@ -669,7 +892,12 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Color Palette
               </h3>
-              <button className="text-xs text-cyan hover:underline">Edit</button>
+              <button 
+                onClick={() => setShowColorEditor(true)}
+                className="text-xs text-cyan hover:underline"
+              >
+                Edit
+              </button>
             </div>
 
             <div className="flex items-center justify-between mb-4 rounded-lg bg-surface-1 p-3">
@@ -677,34 +905,131 @@ export default function CarouselEditorPage({ params }: { params: Promise<{ id: s
               <Switch checked={useBrandKit} onCheckedChange={setUseBrandKit} />
             </div>
 
-            <div className="space-y-3">
-              {colorPalettes.map((palette) => (
-                <button
-                  key={palette.id}
-                  onClick={() => setSelectedPalette(palette.id)}
-                  className={cn(
-                    'w-full rounded-lg border p-3 transition-all',
-                    selectedPalette === palette.id
-                      ? 'border-cyan bg-cyan/10'
-                      : 'border-border bg-surface-1 hover:border-foreground/30'
-                  )}
-                >
+            {useBrandKit ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-cyan bg-cyan/10 p-3">
                   <div className="flex gap-1 mb-2">
-                    {palette.colors.map((color, i) => (
-                      <div
-                        key={i}
-                        className="h-6 flex-1 rounded"
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
+                    <div className="h-6 flex-1 rounded" style={{ backgroundColor: customColors.primary }} />
+                    <div className="h-6 flex-1 rounded" style={{ backgroundColor: customColors.secondary }} />
+                    <div className="h-6 flex-1 rounded" style={{ backgroundColor: customColors.accent }} />
                   </div>
-                  <p className="text-xs text-center text-muted-foreground">{palette.name}</p>
-                </button>
-              ))}
-            </div>
+                  <p className="text-xs text-center text-muted-foreground">Custom Brand Kit</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {colorPalettes.map((palette) => (
+                  <button
+                    key={palette.id}
+                    onClick={() => setSelectedPalette(palette.id)}
+                    className={cn(
+                      'w-full rounded-lg border p-3 transition-all',
+                      selectedPalette === palette.id
+                        ? 'border-cyan bg-cyan/10'
+                        : 'border-border bg-surface-1 hover:border-foreground/30'
+                    )}
+                  >
+                    <div className="flex gap-1 mb-2">
+                      {palette.colors.map((color, i) => (
+                        <div
+                          key={i}
+                          className="h-6 flex-1 rounded"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-center text-muted-foreground">{palette.name}</p>
+                  </button>
+                ))}
+              </div>
+            )}
           </section>
         </aside>
       </div>
+
+      {/* Color Editor Dialog */}
+      <Dialog open={showColorEditor} onOpenChange={setShowColorEditor}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Edit Brand Colors</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Primary Color */}
+            <div className="flex items-center gap-4">
+              <div 
+                className="h-12 w-12 rounded-xl border border-border" 
+                style={{ backgroundColor: customColors.primary }}
+              />
+              <div className="flex-1">
+                <p className="font-medium text-foreground text-sm">Primary Color</p>
+                <p className="text-xs text-muted-foreground">Fondo principal</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg bg-surface-1 px-3 py-2">
+                <span className="text-xs text-muted-foreground">HEX</span>
+                <Input
+                  value={customColors.primary}
+                  onChange={(e) => setCustomColors({ ...customColors, primary: e.target.value })}
+                  className="h-auto w-20 border-none bg-transparent p-0 text-sm font-mono text-foreground"
+                />
+              </div>
+            </div>
+
+            {/* Secondary Color */}
+            <div className="flex items-center gap-4">
+              <div 
+                className="h-12 w-12 rounded-xl border border-border" 
+                style={{ backgroundColor: customColors.secondary }}
+              />
+              <div className="flex-1">
+                <p className="font-medium text-foreground text-sm">Secondary Color</p>
+                <p className="text-xs text-muted-foreground">Texto principal</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg bg-surface-1 px-3 py-2">
+                <span className="text-xs text-muted-foreground">HEX</span>
+                <Input
+                  value={customColors.secondary}
+                  onChange={(e) => setCustomColors({ ...customColors, secondary: e.target.value })}
+                  className="h-auto w-20 border-none bg-transparent p-0 text-sm font-mono text-foreground"
+                />
+              </div>
+            </div>
+
+            {/* Accent Color */}
+            <div className="flex items-center gap-4">
+              <div 
+                className="h-12 w-12 rounded-xl border border-border" 
+                style={{ backgroundColor: customColors.accent }}
+              />
+              <div className="flex-1">
+                <p className="font-medium text-foreground text-sm">Accent Color</p>
+                <p className="text-xs text-muted-foreground">Acentos y CTAs</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg bg-surface-1 px-3 py-2">
+                <span className="text-xs text-muted-foreground">HEX</span>
+                <Input
+                  value={customColors.accent}
+                  onChange={(e) => setCustomColors({ ...customColors, accent: e.target.value })}
+                  className="h-auto w-20 border-none bg-transparent p-0 text-sm font-mono text-foreground"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setShowColorEditor(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                setUseBrandKit(true)
+                setShowColorEditor(false)
+              }}
+              className="bg-cyan text-primary-foreground hover:bg-cyan/90"
+            >
+              Apply Colors
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

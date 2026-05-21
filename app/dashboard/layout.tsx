@@ -1,3 +1,6 @@
+'use client'
+
+import { usePathname } from 'next/navigation'
 import { SwyzeSidebar } from '@/components/swyze/sidebar'
 
 interface DashboardLayoutProps {
@@ -13,6 +16,19 @@ const mockUser = {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const pathname = usePathname()
+  
+  // Hide sidebar on editor pages - they have their own full-screen layout
+  const isEditorPage = pathname.startsWith('/dashboard/editor/')
+  
+  if (isEditorPage) {
+    return (
+      <div className="min-h-screen bg-background">
+        {children}
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <SwyzeSidebar user={mockUser} />
