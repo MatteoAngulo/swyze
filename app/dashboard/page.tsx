@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { AlertCircle, Plus, Sparkles, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { 
@@ -45,6 +46,7 @@ const recentCarousels = [
 ]
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [prompt, setPrompt] = useState('')
   const [selectedBrandKit, setSelectedBrandKit] = useState('default')
   const [slides, setSlides] = useState('5')
@@ -54,11 +56,15 @@ export default function DashboardPage() {
   const handleGenerate = () => {
     if (!prompt.trim()) return
     setIsGenerating(true)
-    // Simulate generation - in real app this would call an API
-    setTimeout(() => {
-      setIsGenerating(false)
-      // Would redirect to editor with new carousel
-    }, 2000)
+    // Store the prompt in sessionStorage for the editor to use
+    sessionStorage.setItem('carouselPrompt', JSON.stringify({
+      prompt,
+      brandKit: selectedBrandKit,
+      slides,
+      platform
+    }))
+    // Redirect to editor with new carousel
+    router.push('/dashboard/editor/new')
   }
 
   const tokenPercentage = (userData.tokensAvailable / userData.tokensTotal) * 100
