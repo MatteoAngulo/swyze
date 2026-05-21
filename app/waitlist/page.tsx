@@ -54,9 +54,12 @@ export default function WaitlistPage() {
         <Link href="/" className="font-heading text-2xl font-bold text-foreground">
           Swyze
         </Link>
-        <nav className="absolute left-1/2 -translate-x-1/2">
+        <nav className="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
           <Link href="/pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             Pricing
+          </Link>
+          <Link href="/waitlist" className="text-sm font-medium text-foreground hover:text-foreground/80 transition-colors">
+            Waitlist
           </Link>
         </nav>
         <nav className="flex items-center gap-6">
