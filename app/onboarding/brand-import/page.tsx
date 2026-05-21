@@ -1,9 +1,39 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
-import { Sparkles, Link as LinkIcon, ArrowRight } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Sparkles, Link as LinkIcon, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 export default function OnboardingBrandImportPage() {
+  const router = useRouter()
+  const [url, setUrl] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!url.trim()) return
+
+    setIsLoading(true)
+    
+    // Simulate brand import (in a real app, this would call an API)
+    // Store the URL for the next step to use
+    try {
+      sessionStorage.setItem('brandImportUrl', url)
+      
+      // Simulate processing delay
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      // Navigate to step 2
+      router.push('/onboarding/brand-colors')
+    } catch (error) {
+      console.error('[v0] Brand import error:', error)
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Subtle gradient background */}
@@ -39,20 +69,36 @@ export default function OnboardingBrandImportPage() {
           </p>
 
           {/* Import Form */}
-          <div className="mt-10 rounded-2xl border border-border bg-surface-1 p-6">
+          <form onSubmit={handleImport} className="mt-10 rounded-2xl border border-border bg-surface-1 p-6">
             <div className="relative">
               <LinkIcon className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://ejemplo.com"
                 className="h-14 pl-12 border-border bg-surface-2 text-foreground placeholder:text-muted-foreground focus-visible:ring-cyan"
+                disabled={isLoading}
               />
             </div>
-            <Button className="mt-4 w-full h-14 bg-cyan text-primary-foreground font-semibold hover:bg-cyan/90 glow-cyan-hover text-base">
-              <Sparkles className="mr-2 h-5 w-5" />
-              IMPORT MY BRAND
+            <Button 
+              type="submit"
+              disabled={isLoading || !url.trim()}
+              className="mt-4 w-full h-14 bg-cyan text-primary-foreground font-semibold hover:bg-cyan/90 glow-cyan-hover text-base disabled:opacity-50"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  IMPORT MY BRAND
+                </>
+              )}
             </Button>
-          </div>
+          </form>
 
           {/* Alternative Options */}
           <div className="mt-8 flex items-center justify-between">
