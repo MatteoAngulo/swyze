@@ -142,7 +142,7 @@ export default function LoginPage() {
             variant="outline"
             disabled={isLoading}
             onClick={handleGoogleSignIn}
-            className="w-full h-12 border-border bg-surface-2 text-foreground hover:bg-white hover:text-black hover:border-white transition-all disabled:opacity-50"
+            className="w-full h-12 border-border bg-surface-2 text-foreground hover:bg-transparent hover:border-white hover:text-white transition-all disabled:opacity-50"
           >
             <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
               <path
