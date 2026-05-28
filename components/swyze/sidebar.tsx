@@ -16,6 +16,7 @@ import {
   User
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -51,9 +52,11 @@ export function SwyzeSidebar({ user }: SwyzeSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
-  const handleLogout = () => {
-    // In a real app, this would call an auth logout function
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
     router.push('/auth/login')
+    router.refresh()
   }
 
   return (

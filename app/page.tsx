@@ -1,37 +1,49 @@
-import Link from 'next/link'
-import { Sparkles, Zap, Settings, ChevronDown, ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { 
+import Link from "next/link";
+import { Sparkles, Zap, Settings, ChevronDown, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue 
-} from '@/components/ui/select'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+  SelectValue,
+} from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Subtle gradient background */}
       <div className="fixed inset-0 bg-gradient-to-br from-cyan/5 via-transparent to-transparent pointer-events-none" />
-      
+
       {/* Header */}
       <header className="relative z-10 flex items-center justify-between px-8 py-6 lg:px-16">
-        <Link href="/" className="font-heading text-2xl font-bold text-foreground">
+        <Link
+          href="/"
+          className="font-heading text-2xl font-bold text-foreground"
+        >
           Swyze
         </Link>
         <nav className="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
-          <Link href="/pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <Link
+            href="/pricing"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
             Pricing
           </Link>
-          <Link href="/waitlist" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <Link
+            href="/waitlist"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
             Waitlist
           </Link>
         </nav>
         <nav className="flex items-center gap-6">
-          <Link href="/auth/login" className="text-sm font-medium text-foreground hover:text-foreground/80 transition-colors">
+          <Link
+            href="/auth/login"
+            className="text-sm font-medium text-foreground hover:text-foreground/80 transition-colors"
+          >
             Log in
           </Link>
           <Link href="/auth/signup">
@@ -54,13 +66,14 @@ export default function LandingPage() {
 
         {/* Headline */}
         <h1 className="max-w-3xl text-center font-heading text-4xl font-bold leading-tight text-foreground md:text-5xl lg:text-6xl">
-          Carruseles con tu marca,{' '}
+          Carruseles con tu marca,{" "}
           <span className="text-cyan">en minutos.</span>
         </h1>
 
         {/* Subheadline */}
         <p className="mt-6 max-w-xl text-center text-lg text-muted-foreground">
-          Generados por IA con tus colores y tipografías exactas. Listos para publicar.
+          Generados por IA con tus colores y tipografías exactas. Listos para
+          publicar.
         </p>
 
         {/* Generator Card */}
@@ -153,14 +166,26 @@ export default function LandingPage() {
       <footer className="relative z-10 border-t border-border bg-surface-0 px-8 py-8 lg:px-16">
         <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
           <div>
-            <p className="font-heading text-lg font-bold text-foreground">Swyze</p>
-            <p className="text-xs text-muted-foreground">Carruseles con identidad de marca, generados por IA.</p>
+            <p className="font-heading text-lg font-bold text-foreground">
+              Swyze
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Carruseles con identidad de marca, generados por IA.
+            </p>
           </div>
           <nav className="flex items-center gap-6 text-sm text-muted-foreground">
-            <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
-            <Link href="/terms" className="hover:text-foreground">Terms</Link>
-            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
-            <Link href="/contact" className="hover:text-foreground">Contact</Link>
+            <Link href="/pricing" className="hover:text-foreground">
+              Pricing
+            </Link>
+            <Link href="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <Link href="/privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/contact" className="hover:text-foreground">
+              Contact
+            </Link>
           </nav>
           <p className="text-xs text-muted-foreground">
             © 2024 Swyze AI. The Sophisticated Catalyst for Creators.
@@ -168,5 +193,5 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
-  )
+  );
 }

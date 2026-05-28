@@ -1,274 +1,338 @@
 'use client'
 
-import { useState } from 'react'
-import { 
-  Search, 
-  Plus, 
-  Check, 
-  Image as ImageIcon, 
-  Palette, 
-  Type, 
-  Smartphone, 
-  Monitor,
-  Upload,
-  Crown
-} from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Check, Palette, Type, Trash2, Loader2, Crown, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import {
+  getBrandKits, createBrandKit, updateBrandKit, deleteBrandKit,
+  setDefaultBrandKit, type BrandKit
+} from '@/lib/supabase/brand-kits'
 
-const brands = [
-  { id: 1, name: 'Swyze Official', initials: 'SW', updatedAt: '2 days ago', isActive: true },
-  { id: 2, name: 'Project Alpha', initials: 'PA', updatedAt: '', isActive: false, isDraft: true },
+const fontOptions = [
+  { value: 'inter', label: 'Inter', fontFamily: "'Inter', sans-serif" },
+  { value: 'sora', label: 'Sora', fontFamily: "'Sora', sans-serif" },
+  { value: 'playfair', label: 'Playfair Display', fontFamily: "'Playfair Display', serif" },
+  { value: 'jakarta', label: 'Plus Jakarta Sans', fontFamily: "'Plus Jakarta Sans', sans-serif" },
 ]
 
-const defaultColors = {
-  primary: '#00D4FF',
-  secondary: '#1C1B1B',
-  accent: '#FFD9A1',
+const emptyKit = {
+  name: 'Nuevo Brand Kit',
+  primary_color: '#00D4FF',
+  secondary_color: '#131313',
+  accent_color: '#FEB528',
+  font: 'sora',
+  is_default: false,
 }
 
 export default function BrandKitPage() {
-  const [activeBrand, setActiveBrand] = useState(brands[0])
-  const [colors, setColors] = useState(defaultColors)
-  const [previewMode, setPreviewMode] = useState<'mobile' | 'desktop'>('mobile')
+  const [kits, setKits] = useState<BrandKit[]>([])
+  const [activeKit, setActiveKit] = useState<BrandKit | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  // Local editable state
+  const [name, setName] = useState('')
+  const [primary, setPrimary] = useState('')
+  const [secondary, setSecondary] = useState('')
+  const [accent, setAccent] = useState('')
+  const [font, setFont] = useState('sora')
+
+  useEffect(() => {
+    try {
+      const supabase = createClient()
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) { setLoading(false); return }
+        setUserId(user.id)
+        getBrandKits(user.id).then(data => {
+          setKits(data)
+          if (data.length > 0) selectKit(data[0])
+          setLoading(false)
+        })
+      })
+    } catch { setLoading(false) }
+  }, [])
+
+  const selectKit = (kit: BrandKit) => {
+    setActiveKit(kit)
+    setName(kit.name)
+    setPrimary(kit.primary_color)
+    setSecondary(kit.secondary_color)
+    setAccent(kit.accent_color)
+    setFont(kit.font)
+  }
+
+  const handleCreate = async () => {
+    if (!userId) return
+    setSaving(true)
+    try {
+      const newKit = await createBrandKit(userId, { ...emptyKit })
+      setKits(prev => [newKit, ...prev])
+      selectKit(newKit)
+    } catch (e) { console.error(e) }
+    finally { setSaving(false) }
+  }
+
+  const handleSave = async () => {
+    if (!activeKit) return
+    setSaving(true)
+    try {
+      const updated = await updateBrandKit(activeKit.id, {
+        name, primary_color: primary, secondary_color: secondary,
+        accent_color: accent, font,
+      })
+      setKits(prev => prev.map(k => k.id === updated.id ? updated : k))
+      setActiveKit(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e) { console.error(e) }
+    finally { setSaving(false) }
+  }
+
+  const handleDelete = async (kitId: string) => {
+    if (!confirm('¿Eliminar este brand kit?')) return
+    try {
+      await deleteBrandKit(kitId)
+      const remaining = kits.filter(k => k.id !== kitId)
+      setKits(remaining)
+      if (activeKit?.id === kitId) {
+        if (remaining.length > 0) selectKit(remaining[0])
+        else setActiveKit(null)
+      }
+    } catch (e) { console.error(e) }
+  }
+
+  const handleSetDefault = async (kitId: string) => {
+    if (!userId) return
+    await setDefaultBrandKit(userId, kitId)
+    setKits(prev => prev.map(k => ({ ...k, is_default: k.id === kitId })))
+    if (activeKit) setActiveKit({ ...activeKit, is_default: activeKit.id === kitId })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex gap-8">
-      {/* Brands List */}
+      {/* Kits list */}
       <div className="w-64 shrink-0">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-heading text-xl font-semibold text-foreground">Your Brands</h2>
-          <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+          <h2 className="font-heading text-xl font-semibold text-foreground">Tus Brand Kits</h2>
+          <Button size="icon" variant="ghost" onClick={handleCreate} disabled={saving} className="h-8 w-8 text-muted-foreground hover:text-foreground">
             <Plus className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search brands..."
-            className="h-10 pl-10 border-border bg-surface-1 text-foreground placeholder:text-muted-foreground text-sm"
-          />
-        </div>
-
-        {/* Brands */}
         <div className="space-y-2">
-          {brands.map((brand) => (
+          {kits.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border p-4 text-center">
+              <p className="text-sm text-muted-foreground">Sin brand kits aún</p>
+              <Button size="sm" onClick={handleCreate} className="mt-2 bg-cyan text-primary-foreground hover:bg-cyan/90">
+                Crear uno
+              </Button>
+            </div>
+          ) : kits.map((kit) => (
             <button
-              key={brand.id}
-              onClick={() => setActiveBrand(brand)}
+              key={kit.id}
+              onClick={() => selectKit(kit)}
               className={cn(
                 'w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors',
-                activeBrand.id === brand.id
-                  ? 'bg-surface-1 border border-cyan/30'
-                  : 'hover:bg-surface-1/50'
+                activeKit?.id === kit.id ? 'bg-surface-1 border border-cyan/30' : 'hover:bg-surface-1/50'
               )}
             >
-              <div className={cn(
-                'flex h-10 w-10 items-center justify-center rounded-lg text-sm font-semibold',
-                brand.isActive ? 'bg-cyan text-primary-foreground' : 'bg-surface-2 text-muted-foreground'
-              )}>
-                {brand.initials}
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg shrink-0" style={{ backgroundColor: kit.primary_color }}>
+                <span className="text-xs font-bold" style={{ color: kit.secondary_color }}>
+                  {kit.name.charAt(0).toUpperCase()}
+                </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground truncate">{brand.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {brand.isDraft ? 'Draft' : `Updated ${brand.updatedAt}`}
-                </p>
+                <p className="font-medium text-foreground truncate">{kit.name}</p>
+                {kit.is_default && <p className="text-xs text-cyan">Por defecto</p>}
               </div>
-              {activeBrand.id === brand.id && (
-                <Check className="h-4 w-4 text-cyan shrink-0" />
-              )}
+              {activeKit?.id === kit.id && <Check className="h-4 w-4 text-cyan shrink-0" />}
             </button>
           ))}
         </div>
 
-        {/* Pro Limit Card */}
         <div className="mt-8 rounded-xl border border-border bg-surface-1 p-4">
           <div className="flex items-center gap-2 text-amber">
             <Crown className="h-4 w-4" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Pro Limit</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Pro</span>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            Upgrade to Pro for unlimited brand profiles and custom font uploads.
+            Kits ilimitados y fuentes personalizadas en el plan Pro.
           </p>
-          <Button className="mt-4 w-full border-border bg-surface-2 text-foreground hover:bg-surface-3" variant="outline">
-            Upgrade Now
+          <Button className="mt-4 w-full border-border bg-surface-2 text-foreground hover:bg-surface-1" variant="outline">
+            Upgrade
           </Button>
         </div>
       </div>
 
-      {/* Brand Editor */}
-      <div className="flex-1">
-        <div className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Editing Profile
-          </p>
-          <h1 className="font-heading text-3xl font-bold text-foreground">{activeBrand.name}</h1>
-        </div>
-
-        <div className="grid gap-8 lg:grid-cols-2">
-          {/* Form */}
-          <div className="space-y-8">
-            {/* Brand Logo */}
-            <section className="rounded-xl border border-border bg-surface-1 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <ImageIcon className="h-5 w-5 text-cyan" />
-                <h3 className="font-heading text-lg font-semibold text-foreground">Brand Logo</h3>
-              </div>
-              <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-surface-2 p-8">
-                <Upload className="h-8 w-8 text-muted-foreground mb-3" />
-                <p className="font-medium text-foreground">Drag & drop your logo here</p>
-                <p className="text-sm text-muted-foreground">Supports SVG, PNG, JPG (Max 5MB)</p>
-              </div>
-            </section>
-
-            {/* Color Palette */}
-            <section className="rounded-xl border border-border bg-surface-1 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Palette className="h-5 w-5 text-cyan" />
-                <h3 className="font-heading text-lg font-semibold text-foreground">Color Palette</h3>
-              </div>
-              <div className="space-y-4">
-                {/* Primary */}
-                <div className="flex items-center gap-4 rounded-lg bg-surface-2 p-3">
-                  <div 
-                    className="h-10 w-10 rounded-lg shrink-0" 
-                    style={{ backgroundColor: colors.primary }}
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Primary Color</p>
-                    <p className="text-xs text-muted-foreground">Main CTAs, Highlights</p>
-                  </div>
-                  <div className="flex items-center gap-2 rounded bg-surface-3 px-2 py-1">
-                    <span className="text-xs text-muted-foreground">#</span>
-                    <Input
-                      value={colors.primary.replace('#', '')}
-                      onChange={(e) => setColors({ ...colors, primary: `#${e.target.value}` })}
-                      className="h-auto w-20 border-none bg-transparent p-0 text-sm font-mono text-foreground"
-                    />
-                  </div>
-                </div>
-
-                {/* Secondary */}
-                <div className="flex items-center gap-4 rounded-lg bg-surface-2 p-3">
-                  <div 
-                    className="h-10 w-10 rounded-lg shrink-0" 
-                    style={{ backgroundColor: colors.secondary }}
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Secondary Color</p>
-                    <p className="text-xs text-muted-foreground">Surfaces, Secondary Actions</p>
-                  </div>
-                  <div className="flex items-center gap-2 rounded bg-surface-3 px-2 py-1">
-                    <span className="text-xs text-muted-foreground">#</span>
-                    <Input
-                      value={colors.secondary.replace('#', '')}
-                      onChange={(e) => setColors({ ...colors, secondary: `#${e.target.value}` })}
-                      className="h-auto w-20 border-none bg-transparent p-0 text-sm font-mono text-foreground"
-                    />
-                  </div>
-                </div>
-
-                {/* Accent */}
-                <div className="flex items-center gap-4 rounded-lg bg-surface-2 p-3">
-                  <div 
-                    className="h-10 w-10 rounded-lg shrink-0" 
-                    style={{ backgroundColor: colors.accent }}
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Accent Color</p>
-                    <p className="text-xs text-muted-foreground">Warnings, Badges, Chips</p>
-                  </div>
-                  <div className="flex items-center gap-2 rounded bg-surface-3 px-2 py-1">
-                    <span className="text-xs text-muted-foreground">#</span>
-                    <Input
-                      value={colors.accent.replace('#', '')}
-                      onChange={(e) => setColors({ ...colors, accent: `#${e.target.value}` })}
-                      className="h-auto w-20 border-none bg-transparent p-0 text-sm font-mono text-foreground"
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Typography */}
-            <section className="rounded-xl border border-border bg-surface-1 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Type className="h-5 w-5 text-cyan" />
-                <h3 className="font-heading text-lg font-semibold text-foreground">Typography</h3>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Font selection coming soon. Currently using Sora for headings and Plus Jakarta Sans for body text.
-              </p>
-            </section>
+      {/* Editor */}
+      {activeKit ? (
+        <div className="flex-1">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Editando</p>
+              <h1 className="font-heading text-3xl font-bold text-foreground">{activeKit.name}</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSetDefault(activeKit.id)}
+                disabled={activeKit.is_default}
+                className="border-border bg-surface-2 text-foreground hover:bg-surface-1"
+              >
+                <Star className={cn("mr-2 h-4 w-4", activeKit.is_default ? "text-cyan fill-cyan" : "")} />
+                {activeKit.is_default ? 'Por defecto' : 'Hacer default'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDelete(activeKit.id)}
+                className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
-          {/* Live Preview */}
-          <div>
-            <div className="sticky top-8">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-cyan animate-pulse" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Live Preview
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 rounded-lg border border-border bg-surface-1 p-1">
-                  <button
-                    onClick={() => setPreviewMode('mobile')}
-                    className={cn(
-                      'rounded-md p-2 transition-colors',
-                      previewMode === 'mobile' ? 'bg-surface-2 text-foreground' : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <Smartphone className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setPreviewMode('desktop')}
-                    className={cn(
-                      'rounded-md p-2 transition-colors',
-                      previewMode === 'desktop' ? 'bg-surface-2 text-foreground' : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <Monitor className="h-4 w-4" />
-                  </button>
-                </div>
+          <div className="grid gap-8 lg:grid-cols-2">
+            <div className="space-y-6">
+              {/* Name */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nombre del kit</Label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-12 border-border bg-surface-1 text-foreground"
+                />
               </div>
 
-              {/* Preview Card */}
-              <div className="rounded-2xl border border-border bg-surface-1 p-4">
-                <div 
-                  className="aspect-[4/5] rounded-xl p-6 flex flex-col"
-                  style={{ backgroundColor: colors.primary }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 text-sm font-bold text-white">
-                      SW
+              {/* Colors */}
+              <section className="rounded-xl border border-border bg-surface-1 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Palette className="h-5 w-5 text-cyan" />
+                  <h3 className="font-heading text-lg font-semibold text-foreground">Colores</h3>
+                </div>
+                <div className="space-y-4">
+                  {[
+                    { label: 'Primary', desc: 'Fondo principal de los slides', value: primary, set: setPrimary },
+                    { label: 'Secondary', desc: 'Color del texto principal', value: secondary, set: setSecondary },
+                    { label: 'Accent', desc: 'Acentos, CTAs, decoraciones', value: accent, set: setAccent },
+                  ].map(({ label, desc, value, set }) => (
+                    <div key={label} className="flex items-center gap-4 rounded-lg bg-surface-2 p-3">
+                      <div className="h-10 w-10 rounded-lg shrink-0 border border-border/50" style={{ backgroundColor: value }} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">{label}</p>
+                        <p className="text-xs text-muted-foreground">{desc}</p>
+                      </div>
+                      <div className="flex items-center gap-1 rounded bg-surface-0 px-2 py-1.5">
+                        <span className="text-xs text-muted-foreground">#</span>
+                        <Input
+                          value={value.replace('#', '')}
+                          onChange={(e) => set(`#${e.target.value}`)}
+                          className="h-auto w-20 border-none bg-transparent p-0 text-sm font-mono text-foreground"
+                          maxLength={6}
+                        />
+                      </div>
                     </div>
-                    <span className="text-xs text-white/60">01/05</span>
-                  </div>
-                  <div className="flex-1 flex items-end">
-                    <div 
-                      className="rounded-md px-3 py-1 text-xs font-semibold"
-                      style={{ backgroundColor: colors.accent, color: colors.secondary }}
+                  ))}
+                </div>
+              </section>
+
+              {/* Font */}
+              <section className="rounded-xl border border-border bg-surface-1 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Type className="h-5 w-5 text-cyan" />
+                  <h3 className="font-heading text-lg font-semibold text-foreground">Tipografia</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {fontOptions.map((f) => (
+                    <button
+                      key={f.value}
+                      onClick={() => setFont(f.value)}
+                      className={cn(
+                        'rounded-lg border p-3 text-left transition-all',
+                        font === f.value ? 'border-cyan bg-cyan/10' : 'border-border bg-surface-2 hover:border-foreground/30'
+                      )}
                     >
-                      NEW FEATURE
+                      <p className="font-semibold text-foreground text-sm" style={{ fontFamily: f.fontFamily }}>{f.label}</p>
+                      {font === f.value && <div className="mt-1 h-1 w-4 rounded-full bg-cyan" />}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            {/* Preview */}
+            <div className="sticky top-8">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-2 w-2 rounded-full bg-cyan animate-pulse" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Preview en vivo</span>
+              </div>
+              <div className="rounded-2xl border border-border bg-surface-1 p-4">
+                <div
+                  className="aspect-[4/5] rounded-xl p-6 flex flex-col relative overflow-hidden"
+                  style={{ backgroundColor: primary }}
+                >
+                  {/* decorative circle */}
+                  <svg className="absolute top-0 right-0" width="120" height="120" viewBox="0 0 120 120">
+                    <circle cx="100" cy="20" r="80" fill={accent} opacity="0.15" />
+                  </svg>
+                  <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-xl" style={{ backgroundColor: `${secondary}20` }}>
+                    <span className="text-lg font-bold" style={{ color: secondary }}>{name.charAt(0)}</span>
+                  </div>
+                  <div className="relative z-10 mt-auto">
+                    <p className="text-2xl font-bold leading-tight" style={{ color: secondary, fontFamily: fontOptions.find(f => f.value === font)?.fontFamily }}>
+                      {name}
+                    </p>
+                    <div className="mt-2 h-1 w-12 rounded-full" style={{ backgroundColor: accent }} />
+                    <p className="mt-3 text-sm opacity-60" style={{ color: secondary }}>
+                      Tu contenido con esta paleta de colores.
+                    </p>
+                  </div>
+                  <div className="relative z-10 mt-auto flex items-center justify-between pt-4">
+                    <span className="text-xs opacity-50" style={{ color: secondary }}>@swyze_ai</span>
+                    <div className="flex gap-1">
+                      {[0, 1, 2].map(i => (
+                        <div key={i} className="h-2 w-2 rounded-full" style={{ backgroundColor: i === 0 ? accent : secondary, opacity: i === 0 ? 1 : 0.3 }} />
+                      ))}
                     </div>
                   </div>
                 </div>
-                <p className="mt-4 text-center text-sm text-muted-foreground">
-                  Changes are reflected in real-time.
-                </p>
+                <p className="mt-4 text-center text-sm text-muted-foreground">Los cambios se reflejan en tiempo real.</p>
               </div>
             </div>
           </div>
+
+          <div className="flex justify-end pt-6 border-t border-border mt-8">
+            <Button onClick={handleSave} disabled={saving} className="bg-cyan text-primary-foreground font-semibold hover:bg-cyan/90 px-8">
+              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</> : saved ? <><Check className="mr-2 h-4 w-4" />Guardado</> : 'Guardar kit'}
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-muted-foreground mb-4">No tienes brand kits aún.</p>
+            <Button onClick={handleCreate} className="bg-cyan text-primary-foreground hover:bg-cyan/90">
+              <Plus className="mr-2 h-4 w-4" />Crear primer kit
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

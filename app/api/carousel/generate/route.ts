@@ -1,65 +1,58 @@
-import {
-  consumeStream,
-  convertToModelMessages,
-  streamText,
-  UIMessage,
-} from 'ai'
+import { generateText } from 'ai'
+import { getModel } from '@/lib/ai-provider'
 
 export const maxDuration = 60
 
-const CAROUSEL_SYSTEM_PROMPT = `You are an expert carousel content creator for social media. 
-Your task is to generate carousel slides in a structured format.
+const CAROUSEL_SYSTEM_PROMPT = `You are an expert carousel content creator for social media.
+Generate carousel slides and respond ONLY with valid JSON — no markdown, no explanation, no code blocks.
 
-For each slide, provide:
-1. A headline (max 10 words, punchy and engaging)
-2. Body text (2-3 sentences, informative and valuable)
-3. An icon suggestion (chart, lightbulb, target, rocket, heart, star, check, trending, users, zap)
-
-Format your response as JSON with this structure:
+JSON format:
 {
   "title": "Overall carousel title",
   "slides": [
     {
-      "headline": "Slide headline here",
-      "body": "Body text here with valuable information.",
-      "icon": "chart"
+      "headline": "Slide headline (max 10 words)",
+      "body": "Body text with 2-3 sentences of valuable content.",
+      "icon": "chart",
+      "layout": "hero"
     }
   ]
 }
 
-Make the content engaging, actionable, and valuable for the target audience.
-Use professional but accessible language.`
+LAYOUT RULES (very important):
+- First slide MUST use "hero" layout
+- Last slide MUST use "cta" layout
+- Middle slides should vary between: "centered", "split", "quote", "stats"
+- Use "stats" when the slide contains numbers, percentages, or data
+- Use "quote" when the slide contains advice, tips, or testimonials
+- Use "split" for explanatory content
+- Use "centered" for general points
+
+Available layouts: hero, centered, split, quote, stats, cta
+Icon must be one of: chart, lightbulb, target, rocket, heart, star, check, trending, users, zap
+Generate content in the same language as the user's prompt.`
 
 export async function POST(req: Request) {
-  const { messages, prompt, slideCount, platform, brandKit }: { 
-    messages?: UIMessage[]
+  const { prompt, slideCount, platform, brandKit }: {
     prompt?: string
     slideCount: number
     platform: string
     brandKit: string
   } = await req.json()
 
-  const userPrompt = prompt || (messages && messages.length > 0 
-    ? messages[messages.length - 1].parts?.filter(p => p.type === 'text').map(p => (p as { type: 'text'; text: string }).text).join('') 
-    : '')
+  const userPrompt = `Create a ${slideCount}-slide carousel for ${platform} about: "${prompt}"
+Brand Kit: ${brandKit}
+Generate exactly ${slideCount} slides. Each slide must flow naturally to the next.
+Remember: first slide = "hero" layout, last slide = "cta" layout, vary the middle slides.`
 
-  const fullPrompt = `Create a ${slideCount}-slide carousel for ${platform} about: "${userPrompt}"
-  
-Brand Kit being used: ${brandKit}
-  
-Generate exactly ${slideCount} slides with compelling content. Make sure each slide flows naturally to the next and tells a cohesive story.`
-
-  const result = streamText({
-    model: 'openai/gpt-5',
+  const { text } = await generateText({
+    model: getModel(),
     system: CAROUSEL_SYSTEM_PROMPT,
-    messages: messages 
-      ? await convertToModelMessages(messages)
-      : [{ role: 'user' as const, content: fullPrompt }],
-    abortSignal: req.signal,
+    prompt: userPrompt,
   })
 
-  return result.toUIMessageStreamResponse({
-    originalMessages: messages,
-    consumeSseStream: consumeStream,
-  })
+  const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  const data = JSON.parse(clean)
+
+  return Response.json(data)
 }
